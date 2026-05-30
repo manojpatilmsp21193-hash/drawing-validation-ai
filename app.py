@@ -1715,8 +1715,7 @@ if uploaded_file:
                 for i in ocr_items
             ])
 
-            st.dataframe(df_ocr, use_column_width=True)
-
+            st.dataframe(df_ocr)
             st.subheader("Joined Corrected OCR Text")
             st.write(joined_ocr_text(ocr_items))
 
@@ -1812,7 +1811,7 @@ if uploaded_file:
                 for d in dimensions
             ])
 
-            st.dataframe(df_dim, use_column_width=True)
+            st.dataframe(df_dim)
         else:
             st.warning("No dimensions detected")
 
@@ -1836,7 +1835,7 @@ if uploaded_file:
                 for i in issues
             ])
 
-            st.dataframe(issue_df, use_column_width=True)
+            st.dataframe(issue_df)
 
             st.subheader("Issue Numbers Marked on Drawing")
 
