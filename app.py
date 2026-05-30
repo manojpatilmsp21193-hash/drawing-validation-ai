@@ -1694,10 +1694,10 @@ if uploaded_file:
 
     with tab1:
         st.subheader("Original Drawing")
-        st.image(original_pil, use_container_width=True)
+        st.image(original_pil, use_column_width=True)
 
         st.subheader("Preprocessed Image")
-        st.image(thresh, use_container_width=True)
+        st.image(thresh, use_column_width=True)
 
     with tab2:
         st.subheader("OCR Results With AI Correction")
@@ -1715,7 +1715,7 @@ if uploaded_file:
                 for i in ocr_items
             ])
 
-            st.dataframe(df_ocr, use_container_width=True)
+            st.dataframe(df_ocr, use_column_width=True)
 
             st.subheader("Joined Corrected OCR Text")
             st.write(joined_ocr_text(ocr_items))
@@ -1750,7 +1750,7 @@ if uploaded_file:
 
         st.image(
             cv2.cvtColor(hole_img, cv2.COLOR_BGR2RGB),
-            use_container_width=True
+            use_column_width=True
         )
 
         c1, c2, c3, c4 = st.columns(4)
@@ -1812,7 +1812,7 @@ if uploaded_file:
                 for d in dimensions
             ])
 
-            st.dataframe(df_dim, use_container_width=True)
+            st.dataframe(df_dim, use_column_width=True)
         else:
             st.warning("No dimensions detected")
 
@@ -1836,13 +1836,13 @@ if uploaded_file:
                 for i in issues
             ])
 
-            st.dataframe(issue_df, use_container_width=True)
+            st.dataframe(issue_df, use_column_width=True)
 
             st.subheader("Issue Numbers Marked on Drawing")
 
             st.image(
                 cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
-                use_container_width=True
+                use_column_width=True
             )
 
         else:
@@ -1880,7 +1880,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(preview, cv2.COLOR_BGR2RGB),
-                use_container_width=True
+                use_column_width=True
             )
 
         else:
@@ -1893,7 +1893,7 @@ if uploaded_file:
 
         with col1:
             st.write("Original Uploaded Drawing")
-            st.image(original_pil, use_container_width=True)
+            st.image(original_pil, use_column_width=True)
 
         with col2:
             st.write("Drawing With Corrections Required")
@@ -1912,7 +1912,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(comparison_img, cv2.COLOR_BGR2RGB),
-                use_container_width=True
+                use_column_width=True
             )
 
     with tab7:
