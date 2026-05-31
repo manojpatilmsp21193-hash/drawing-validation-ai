@@ -55,6 +55,64 @@ def load_ocr():
 
 reader = load_ocr()
 
+# =========================================================
+# LANDING PAGE / FRONT PAGE
+# Paste this in Phase 4 BEFORE uploaded_file and BEFORE if uploaded_file:
+# =========================================================
+
+def show_landing_page():
+    st.image(
+        "vericad_banner.png"
+    )
+
+    st.markdown(
+        """
+        ## Welcome to VeriCAD
+
+        **VeriCAD** is an AI-powered CAD Drawing Validation & Correction Platform.
+
+        It helps engineers automatically inspect CAD drawings for:
+
+        - Missing dimensions
+        - Slot annotation errors
+        - Radius / chamfer callout issues
+        - Circlip groove validation
+        - Material and finish mismatch
+        - Dowel hole tolerance errors
+        - Missing/incorrect GD & T annotations
+        - Incorrect decimal format
+        
+
+        ### How it works
+
+        1. Upload a CAD drawing image
+        2. OCR extracts drawing text
+        3. Computer Vision detects features
+        4. AI rule engine validates compliance
+        5. Errors are marked directly on the drawing
+        6. Download report and corrected output
+        """
+    )
+
+    st.info("For best results, upload clear PNG/JPG CAD drawing images.")
+
+    if st.button("🚀 Let's Start"):
+        st.session_state.started = True
+        st.rerun()
+
+
+if "started" not in st.session_state:
+    st.session_state.started = False
+
+if not st.session_state.started:
+    show_landing_page()
+    st.stop()
+
+
+# =========================================================
+# ACTUAL APP STARTS HERE
+# =========================================================
+
 uploaded_file = st.file_uploader(
     "Upload CAD Drawing Image",
     type=["png", "jpg", "jpeg"]
