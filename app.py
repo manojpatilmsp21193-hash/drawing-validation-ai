@@ -108,10 +108,20 @@ if not st.session_state.started:
     show_landing_page()
     st.stop()
 
+# =====================================================
+# HOME BUTTON
+# =====================================================
 
-# =========================================================
-# ACTUAL APP STARTS HERE
-# =========================================================
+col1, col2 = st.columns([1, 8])
+
+with col1:
+    if st.button("🏠 Home"):
+        st.session_state.started = False
+        st.rerun()
+
+# =====================================================
+# FILE UPLOAD
+# =====================================================
 
 uploaded_file = st.file_uploader(
     "Upload CAD Drawing Image",
