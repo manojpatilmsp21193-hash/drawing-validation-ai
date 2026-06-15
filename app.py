@@ -93,7 +93,7 @@ def show_landing_page():
 
         ### How it works
 
-        1. Upload a CAD drawing image
+        1. Upload a CAD drawing image/PDF file
         2. OCR extracts drawing text
         3. Computer Vision detects features
         4. AI rule engine validates compliance
