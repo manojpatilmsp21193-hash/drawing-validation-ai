@@ -142,41 +142,41 @@ def pil_to_bgr(image):
     return image, img_bgr
 
 
-def load_pdf_as_image(uploaded_file, page_number=0, zoom=2.5):
-    pdf_bytes = uploaded_file.getvalue()
+def load_pdf_as_image(uploaded_file, page_number=0, zoom=2.0):
+    try:
+        pdf_bytes = uploaded_file.getvalue()
 
-    doc = fitz.open(
-        stream=pdf_bytes,
-        filetype="pdf"
-    )
-
-    if len(doc) == 0:
-        raise ValueError("PDF has no pages")
-
-    page_number = min(
-        max(page_number, 0),
-        len(doc) - 1
-    )
-
-    page = doc.load_page(page_number)
-
-    matrix = fitz.Matrix(
-        zoom,
-        zoom
-    )
-
-    pix = page.get_pixmap(
-        matrix=matrix,
-        alpha=False
-    )
-
-    image = Image.open(
-        io.BytesIO(
-            pix.tobytes("png")
+        doc = fitz.open(
+            stream=pdf_bytes,
+            filetype="pdf"
         )
-    ).convert("RGB")
 
-    return pil_to_bgr(image)
+        if len(doc) == 0:
+            raise ValueError("PDF has no pages")
+
+        page = doc.load_page(page_number)
+
+        pix = page.get_pixmap(
+            matrix=fitz.Matrix(zoom, zoom),
+            alpha=False
+        )
+
+        img_bytes = pix.tobytes("png")
+
+        image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+
+        img_rgb = np.array(image)
+
+        img_bgr = cv2.cvtColor(
+            img_rgb,
+            cv2.COLOR_RGB2BGR
+        )
+
+        return image, img_bgr
+
+    except Exception as e:
+        st.error(f"PDF processing failed: {e}")
+        st.stop()
 
 
 def load_dxf_as_image(uploaded_file):
