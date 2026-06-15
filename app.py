@@ -1886,10 +1886,10 @@ if uploaded_file:
 
     with tab1:
         st.subheader("Original Drawing")
-        st.image(original_pil,width="stretch")
+        st.image(original_pil,use_column_width=True)
 
         st.subheader("Preprocessed Image")
-        st.image(thresh,width="stretch")
+        st.image(thresh,use_column_width=True)
 
     with tab2:
         st.subheader("OCR Results With AI Correction")
@@ -1941,7 +1941,7 @@ if uploaded_file:
 
         st.image(
             cv2.cvtColor(hole_img, cv2.COLOR_BGR2RGB),
-            width="stretch"
+            use_column_width=True
         )
 
         c1, c2, c3, c4 = st.columns(4)
@@ -2033,7 +2033,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
-                width="stretch"
+                use_column_width=True
             )
 
         else:
@@ -2071,7 +2071,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(preview, cv2.COLOR_BGR2RGB),
-                width="stretch"
+               use_column_width=True
             )
 
         else:
@@ -2084,7 +2084,7 @@ if uploaded_file:
 
         with col1:
             st.write("Original Uploaded Drawing")
-            st.image(original_pil,width="stretch")
+            st.image(original_pil,use_column_width=True)
 
         with col2:
             st.write("Drawing With Corrections Required")
@@ -2103,7 +2103,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(comparison_img, cv2.COLOR_BGR2RGB),
-                width="stretch"
+               use_column_width=True
             )
 
     with tab7:
