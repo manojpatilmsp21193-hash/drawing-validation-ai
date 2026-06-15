@@ -17,6 +17,14 @@ import json
 import io
 import math
 import os
+import tempfile
+import fitz  # PyMuPDF
+import ezdxf
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from ezdxf.addons.drawing import RenderContext, Frontend
+from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
 
 ssl._create_default_https_context = lambda: ssl.create_default_context(
     cafile=certifi.where()
@@ -94,12 +102,11 @@ def show_landing_page():
         """
     )
 
-    st.info("For best results, upload clear PNG/JPG CAD drawing images.")
+    st.info("For best results, upload clear PNG/JPG/PDF CAD drawing images.")
 
     if st.button("🚀 Let's Start"):
         st.session_state.started = True
         st.rerun()
-
 
 if "started" not in st.session_state:
     st.session_state.started = False
@@ -124,16 +131,139 @@ with col1:
 # =====================================================
 
 uploaded_file = st.file_uploader(
-    "Upload CAD Drawing Image",
-    type=["png", "jpg", "jpeg"]
+    "Upload CAD Drawing Image / PDF",
+    type=["png", "jpg", "jpeg", "pdf"]
 )
 
-def load_image(uploaded_file):
-    image = Image.open(uploaded_file).convert("RGB")
+def pil_to_bgr(image):
+    image = image.convert("RGB")
     img_rgb = np.array(image)
     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
     return image, img_bgr
 
+
+def load_pdf_as_image(uploaded_file, page_number=0, zoom=2.5):
+    pdf_bytes = uploaded_file.getvalue()
+
+    doc = fitz.open(
+        stream=pdf_bytes,
+        filetype="pdf"
+    )
+
+    if len(doc) == 0:
+        raise ValueError("PDF has no pages")
+
+    page_number = min(
+        max(page_number, 0),
+        len(doc) - 1
+    )
+
+    page = doc.load_page(page_number)
+
+    matrix = fitz.Matrix(
+        zoom,
+        zoom
+    )
+
+    pix = page.get_pixmap(
+        matrix=matrix,
+        alpha=False
+    )
+
+    image = Image.open(
+        io.BytesIO(
+            pix.tobytes("png")
+        )
+    ).convert("RGB")
+
+    return pil_to_bgr(image)
+
+
+def load_dxf_as_image(uploaded_file):
+    dxf_bytes = uploaded_file.getvalue()
+
+    with tempfile.NamedTemporaryFile(
+        suffix=".dxf",
+        delete=False
+    ) as tmp:
+        tmp.write(dxf_bytes)
+        tmp_path = tmp.name
+
+    try:
+        doc = ezdxf.readfile(tmp_path)
+        msp = doc.modelspace()
+
+        fig = plt.figure(
+            figsize=(16, 12),
+            dpi=200
+        )
+
+        ax = fig.add_axes(
+            [0, 0, 1, 1]
+        )
+
+        ax.set_aspect("equal")
+        ax.axis("off")
+
+        ctx = RenderContext(doc)
+        backend = MatplotlibBackend(ax)
+        Frontend(ctx, backend).draw_layout(
+            msp,
+            finalize=True
+        )
+
+        buffer = io.BytesIO()
+
+        fig.savefig(
+            buffer,
+            format="png",
+            dpi=200,
+            bbox_inches="tight",
+            pad_inches=0.05,
+            facecolor="white"
+        )
+
+        plt.close(fig)
+
+        buffer.seek(0)
+
+        image = Image.open(buffer).convert("RGB")
+
+        return pil_to_bgr(image)
+
+    finally:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+def load_image(uploaded_file):
+    image = Image.open(uploaded_file).convert("RGB")
+
+    img_rgb = np.array(image)
+
+    img_bgr = cv2.cvtColor(
+        img_rgb,
+        cv2.COLOR_RGB2BGR
+    )
+
+    return image, img_bgr
+
+def load_any_cad_file(uploaded_file):
+    file_name = uploaded_file.name.lower()
+
+    if file_name.endswith((".png", ".jpg", ".jpeg")):
+        original_pil, img = load_image(uploaded_file)
+        return original_pil, img, "IMAGE"
+
+    if file_name.endswith(".pdf"):
+        original_pil, img = load_pdf_as_image(uploaded_file)
+        return original_pil, img, "PDF"
+
+    if file_name.endswith(".dxf"):
+        original_pil, img = load_dxf_as_image(uploaded_file)
+        return original_pil, img, "DXF"
+
+    raise ValueError("Unsupported file format")
 def preprocess(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -1077,7 +1207,6 @@ DIN471_SHAFT_GROOVE_TABLE = {
     40: {"d2": 37.5, "d2_tol": "-0.25", "m": 1.85, "m_tol": "H13"},
 }
 
-
 def approximate_bbox(img_shape, position):
     h, w = img_shape[:2]
 
@@ -1094,7 +1223,6 @@ def approximate_bbox(img_shape, position):
         return [[int(w*0.35), int(h*0.68)], [int(w*0.75), int(h*0.68)], [int(w*0.75), int(h*0.88)], [int(w*0.35), int(h*0.88)]]
 
     return None
-
 
 def find_finish_bbox(ocr_items, img_shape):
     finish_items = [
@@ -1114,7 +1242,6 @@ def find_finish_bbox(ocr_items, img_shape):
         return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
 
     return approximate_bbox(img_shape, "finish")
-
 
 def detect_shaft_diameter(dimensions):
     candidates = []
@@ -1143,7 +1270,6 @@ def detect_shaft_diameter(dimensions):
 
     return None
 
-
 def build_circlip_suggestion(shaft_size):
     ref = DIN471_SHAFT_GROOVE_TABLE.get(shaft_size)
 
@@ -1155,7 +1281,6 @@ def build_circlip_suggestion(shaft_size):
         f"groove diameter d2 = {ref['d2']} mm, d2 tolerance {ref['d2_tol']}, "
         f"groove width m = {ref['m']} mm, width tolerance {ref['m_tol']}."
     )
-
 
 def check_dowel_center_tolerance(ocr_items, dimensions, issues, issue_id, img_shape):
     for item in ocr_items:
@@ -1194,7 +1319,6 @@ def check_dowel_center_tolerance(ocr_items, dimensions, issues, issue_id, img_sh
 
     return issue_id, False
 
-
 def check_dowel_decimal_rule(ocr_items, issues, issue_id, img_shape):
     joined_text = joined_ocr_text(ocr_items)
 
@@ -1221,7 +1345,6 @@ def check_dowel_decimal_rule(ocr_items, issues, issue_id, img_shape):
             issue_id += 1
 
     return issue_id
-
 
 def check_material_finish(ocr_items, issues, issue_id, img_shape):
     joined_text = joined_ocr_text(ocr_items)
@@ -1250,7 +1373,6 @@ def check_material_finish(ocr_items, issues, issue_id, img_shape):
 
     return issue_id
 
-
 def check_flat_pattern_rule(ocr_items, issues, issue_id, img_shape):
     if has_down_or_up_notation(ocr_items) and not has_flat_pattern_note(ocr_items):
         issues.append({
@@ -1265,7 +1387,6 @@ def check_flat_pattern_rule(ocr_items, issues, issue_id, img_shape):
 
     return issue_id
 
-
 def has_slot_annotation(ocr_items):
     text = joined_ocr_text(ocr_items)
 
@@ -1275,7 +1396,6 @@ def has_slot_annotation(ocr_items):
         or "OBROUND" in text
         or re.search(r"\d+(\.\d+)?\s*SLOT", text) is not None
     )
-
 
 def check_slot_annotation(ocr_items, geometry_features, issues, issue_id):
     if is_extrusion_drawing(ocr_items):
@@ -1299,7 +1419,6 @@ def check_slot_annotation(ocr_items, geometry_features, issues, issue_id):
     })
 
     return issue_id + 1
-
 
 def check_radius_rule(ocr_items, geometry_features, issues, issue_id):
     if is_extrusion_drawing(ocr_items):
@@ -1327,7 +1446,6 @@ def check_radius_rule(ocr_items, geometry_features, issues, issue_id):
 
     return issue_id
 
-
 def check_chamfer_rule(ocr_items, geometry_features, issues, issue_id):
     if is_extrusion_drawing(ocr_items):
         return issue_id
@@ -1352,7 +1470,6 @@ def check_chamfer_rule(ocr_items, geometry_features, issues, issue_id):
         issue_id += 1
 
     return issue_id
-
 
 def check_circlip_groove_annotation(ocr_items, dimensions, geometry_features, issues, issue_id):
     if is_extrusion_drawing(ocr_items):
@@ -1431,7 +1548,6 @@ def check_circlip_groove_annotation(ocr_items, dimensions, geometry_features, is
 
     return issue_id
 
-
 def check_extrusion_table_dimensions(ocr_items, issues, issue_id):
     if not is_extrusion_drawing(ocr_items):
         return issue_id
@@ -1504,7 +1620,6 @@ def check_extrusion_table_dimensions(ocr_items, issues, issue_id):
 
     return issue_id
 
-
 def check_extrusion_decimal_format(ocr_items, issues, issue_id):
     if not is_extrusion_drawing(ocr_items):
         return issue_id
@@ -1527,7 +1642,6 @@ def check_extrusion_decimal_format(ocr_items, issues, issue_id):
 
     return issue_id
 
-
 def check_basic_geometry(ocr_items, holes, issues, issue_id):
     if is_extrusion_drawing(ocr_items):
         return issue_id
@@ -1544,7 +1658,6 @@ def check_basic_geometry(ocr_items, holes, issues, issue_id):
         issue_id += 1
 
     return issue_id
-
 
 def validate(ocr_items, holes, dimensions, geometry_features, img_shape):
     issues = []
@@ -1714,7 +1827,9 @@ def make_report(issues, holes, dimensions, geometry_features, ocr_items):
 # =========================================================
 
 if uploaded_file:
-    original_pil, img = load_image(uploaded_file)
+    original_pil, img, input_type = load_any_cad_file(uploaded_file)
+
+    st.info(f"Input file processed as: {input_type}")
 
     if "corrected_img" not in st.session_state:
         st.session_state.corrected_img = img.copy()
@@ -1749,6 +1864,15 @@ if uploaded_file:
     )
 
     annotated = annotate_issues(img, issues)
+    issues = validate(
+        ocr_items,
+        holes,
+        dimensions,
+        geometry_features,
+        img.shape
+    )
+
+    annotated = annotate_issues(img, issues)
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📄 Input",
@@ -1762,10 +1886,10 @@ if uploaded_file:
 
     with tab1:
         st.subheader("Original Drawing")
-        st.image(original_pil, use_column_width=True)
+        st.image(original_pil,width="stretch")
 
         st.subheader("Preprocessed Image")
-        st.image(thresh, use_column_width=True)
+        st.image(thresh,width="stretch")
 
     with tab2:
         st.subheader("OCR Results With AI Correction")
@@ -1817,7 +1941,7 @@ if uploaded_file:
 
         st.image(
             cv2.cvtColor(hole_img, cv2.COLOR_BGR2RGB),
-            use_column_width=True
+            width="stretch"
         )
 
         c1, c2, c3, c4 = st.columns(4)
@@ -1909,7 +2033,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
-                use_column_width=True
+                width="stretch"
             )
 
         else:
@@ -1947,7 +2071,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(preview, cv2.COLOR_BGR2RGB),
-                use_column_width=True
+                width="stretch"
             )
 
         else:
@@ -1960,7 +2084,7 @@ if uploaded_file:
 
         with col1:
             st.write("Original Uploaded Drawing")
-            st.image(original_pil, use_column_width=True)
+            st.image(original_pil,width="stretch")
 
         with col2:
             st.write("Drawing With Corrections Required")
@@ -1979,7 +2103,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(comparison_img, cv2.COLOR_BGR2RGB),
-                use_column_width=True
+                width="stretch"
             )
 
     with tab7:
@@ -2024,4 +2148,5 @@ if uploaded_file:
 
 else:
     st.info("Upload a CAD drawing image to begin.")
+
 
