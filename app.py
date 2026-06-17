@@ -2155,4 +2155,4 @@ Total Issues Found: {total_issues}
             mime="image/png"
         )
 else:
-    st.success("No issues found. Drawing validation score is 100%.")
+    st.success("Upload a CAD drawing image to begin.")
