@@ -141,7 +141,6 @@ def pil_to_bgr(image):
     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
     return image, img_bgr
 
-
 def load_pdf_as_image(uploaded_file, page_number=0, zoom=2.0):
     try:
         pdf_bytes = uploaded_file.getvalue()
@@ -177,7 +176,6 @@ def load_pdf_as_image(uploaded_file, page_number=0, zoom=2.0):
     except Exception as e:
         st.error(f"PDF processing failed: {e}")
         st.stop()
-
 
 def load_dxf_as_image(uploaded_file):
     dxf_bytes = uploaded_file.getvalue()
@@ -1874,22 +1872,23 @@ if uploaded_file:
 
     annotated = annotate_issues(img, issues)
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📄 Input",
         "🔍 OCR",
         "⚙ Geometry",
         "⚠ Validation",
         "🛠 Auto Correct",
         "🖼 Final Comparison",
+        "📊 VeriCAD Score",
         "📤 Export"
     ])
 
     with tab1:
         st.subheader("Original Drawing")
-        st.image(original_pil,use_column_width=True)
+        st.image(original_pil, use_column_width=True)
 
         st.subheader("Preprocessed Image")
-        st.image(thresh,use_column_width=True)
+        st.image(thresh, use_column_width=True)
 
     with tab2:
         st.subheader("OCR Results With AI Correction")
@@ -1916,22 +1915,13 @@ if uploaded_file:
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.metric(
-                    "Aluminium Extrusion",
-                    is_extrusion_drawing(ocr_items)
-                )
+                st.metric("Aluminium Extrusion", is_extrusion_drawing(ocr_items))
 
             with col2:
-                st.metric(
-                    "DOWN / UP With Angle Present",
-                    has_down_or_up_notation(ocr_items)
-                )
+                st.metric("DOWN / UP With Angle Present", has_down_or_up_notation(ocr_items))
 
             with col3:
-                st.metric(
-                    "Flat Pattern Present",
-                    has_flat_pattern_note(ocr_items)
-                )
+                st.metric("Flat Pattern Present", has_flat_pattern_note(ocr_items))
 
         else:
             st.warning("No OCR text detected")
@@ -1950,42 +1940,24 @@ if uploaded_file:
             st.metric("Detected Holes", len(holes))
 
         with c2:
-            st.metric(
-                "Radius Feature",
-                geometry_features.get("radius_feature_present", False)
-            )
+            st.metric("Radius Feature", geometry_features.get("radius_feature_present", False))
 
         with c3:
-            st.metric(
-                "Chamfer Feature",
-                geometry_features.get("chamfer_feature_present", False)
-            )
+            st.metric("Chamfer Feature", geometry_features.get("chamfer_feature_present", False))
 
         with c4:
-            st.metric(
-                "Slot Feature",
-                geometry_features.get("slot_present", False)
-            )
+            st.metric("Slot Feature", geometry_features.get("slot_present", False))
 
         c5, c6, c7 = st.columns(3)
 
         with c5:
-            st.metric(
-                "Slot Count",
-                geometry_features.get("slot_count", 0)
-            )
+            st.metric("Slot Count", geometry_features.get("slot_count", 0))
 
         with c6:
-            st.metric(
-                "Shaft Region",
-                geometry_features.get("shaft_region_found", False)
-            )
+            st.metric("Shaft Region", geometry_features.get("shaft_region_found", False))
 
         with c7:
-            st.metric(
-                "Circlip Groove",
-                geometry_features.get("circlip_groove_present", False)
-            )
+            st.metric("Circlip Groove", geometry_features.get("circlip_groove_present", False))
 
         st.subheader("Detected Dimensions")
 
@@ -2071,7 +2043,7 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(preview, cv2.COLOR_BGR2RGB),
-               use_column_width=True
+                use_column_width=True
             )
 
         else:
@@ -2084,7 +2056,7 @@ if uploaded_file:
 
         with col1:
             st.write("Original Uploaded Drawing")
-            st.image(original_pil,use_column_width=True)
+            st.image(original_pil, use_column_width=True)
 
         with col2:
             st.write("Drawing With Corrections Required")
@@ -2103,10 +2075,94 @@ if uploaded_file:
 
             st.image(
                 cv2.cvtColor(comparison_img, cv2.COLOR_BGR2RGB),
-               use_column_width=True
+                use_column_width=True
             )
 
     with tab7:
+        st.subheader("📊 VeriCAD Validation Score")
+
+        total_issues = len(issues)
+
+        critical_count = sum(
+            1 for i in issues
+            if i["severity"] == "Critical"
+        )
+
+        medium_count = sum(
+            1 for i in issues
+            if i["severity"] == "Medium"
+        )
+
+        low_count = sum(
+            1 for i in issues
+            if i["severity"] in ["High", "Low"]
+        )
+
+        score = max(
+            0,
+            100 - (
+                critical_count * 20
+                + medium_count * 10
+                + low_count * 5
+            )
+        )
+
+        st.markdown(
+            f"""
+### VeriCAD Validation Score: {score}%
+
+Total Issues Found: {total_issues}
+
+🔴 Critical: {critical_count}
+
+🟡 Medium: {medium_count}
+
+🟢 Low: {low_count}
+"""
+        )
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.error(f"🔴 Critical : {critical_count}")
+
+        with c2:
+            st.warning(f"🟡 Medium : {medium_count}")
+
+        with c3:
+            st.success(f"🟢 Low : {low_count}")
+
+        if total_issues > 0:
+            fig, ax = plt.subplots(figsize=(5, 5))
+
+            labels = ["Critical", "Medium", "Low"]
+
+            sizes = [
+                critical_count,
+                medium_count,
+                low_count
+            ]
+
+            colors = [
+                "#d62728",
+                "#ffbf00",
+                "#2ca02c"
+            ]
+
+            ax.pie(
+                sizes,
+                labels=labels,
+                autopct="%1.0f%%",
+                colors=colors
+            )
+
+            ax.set_title("Issue Distribution")
+
+            st.pyplot(fig)
+        else:
+            st.success("No issues found. Drawing validation score is 100%.")
+
+    with tab8:
         st.subheader("Export Inspection Report")
 
         report_json = make_report(
@@ -2148,5 +2204,3 @@ if uploaded_file:
 
 else:
     st.info("Upload a CAD drawing image to begin.")
-
-
