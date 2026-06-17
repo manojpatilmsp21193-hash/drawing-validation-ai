@@ -1296,7 +1296,7 @@ def check_dowel_center_tolerance(ocr_items, dimensions, issues, issue_id, img_sh
             if 20 <= base_value < 150 and abs(tol_value - 0.013) > 0.0005:
                 issues.append({
                     "id": issue_id,
-                    "severity": "Critical",
+                    "severity": "High",
                     "type": "Dowel Hole Center Distance Tolerance",
                     "message": "Wrong Tolerance value",
                     "suggestion": "Use ±0.013 for center distance below 150 mm",
@@ -1307,7 +1307,7 @@ def check_dowel_center_tolerance(ocr_items, dimensions, issues, issue_id, img_sh
             if 150 <= base_value <= 300 and abs(tol_value - 0.020) > 0.0005:
                 issues.append({
                     "id": issue_id,
-                    "severity": "Critical",
+                    "severity": "High",
                     "type": "Dowel Hole Center Distance Tolerance",
                     "message": "Wrong Tolerance value",
                     "suggestion": "Use ±0.020 for center distance between 150 and 300 mm",
@@ -1360,7 +1360,7 @@ def check_material_finish(ocr_items, issues, issue_id, img_shape):
     if material_is_aluminium and not finish_is_clear_anodize:
         issues.append({
             "id": issue_id,
-            "severity": "High",
+            "severity": "Medium",
             "type": "Material / Finish",
             "message": "Material is ALUMINIUM but finish is not CLEAR ANODIZE",
             "suggestion": "Please check the finish",
@@ -1375,7 +1375,7 @@ def check_flat_pattern_rule(ocr_items, issues, issue_id, img_shape):
     if has_down_or_up_notation(ocr_items) and not has_flat_pattern_note(ocr_items):
         issues.append({
             "id": issue_id,
-            "severity": "High",
+            "severity": "Low",
             "type": "Flat Pattern",
             "message": "DOWN/UP bend notation found but FLAT PATTERN description is missing",
             "suggestion": "Mention FLAT PATTERN",
@@ -1434,7 +1434,7 @@ def check_radius_rule(ocr_items, geometry_features, issues, issue_id):
     if geometry_features.get("radius_feature_present", False) and not radius_annotation_found:
         issues.append({
             "id": issue_id,
-            "severity": "High",
+            "severity": "Medium",
             "type": "Radius Annotation",
             "message": "Radius feature exists but radius annotation is missing",
             "suggestion": "Add radius callout, e.g. R2.0 or 4X R2.0",
@@ -1517,7 +1517,7 @@ def check_circlip_groove_annotation(ocr_items, dimensions, geometry_features, is
     if not circlip_words_found and not d2_found and not m_found:
         issues.append({
             "id": issue_id,
-            "severity": "Critical",
+            "severity": "High",
             "type": "Circlip Groove Annotation",
             "message": "Circlip groove annotation is missing",
             "suggestion": build_circlip_suggestion(shaft_size),
@@ -1536,7 +1536,7 @@ def check_circlip_groove_annotation(ocr_items, dimensions, geometry_features, is
 
         issues.append({
             "id": issue_id,
-            "severity": "Critical",
+            "severity": "High",
             "type": "Circlip Groove Annotation",
             "message": "Circlip groove annotation is wrong or incomplete",
             "suggestion": build_circlip_suggestion(shaft_size) + " Missing/incorrect: " + ", ".join(missing),
@@ -1910,19 +1910,6 @@ if uploaded_file:
             st.subheader("Joined Corrected OCR Text")
             st.write(joined_ocr_text(ocr_items))
 
-            st.subheader("Drawing Type Detection")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Aluminium Extrusion", is_extrusion_drawing(ocr_items))
-
-            with col2:
-                st.metric("DOWN / UP With Angle Present", has_down_or_up_notation(ocr_items))
-
-            with col3:
-                st.metric("Flat Pattern Present", has_flat_pattern_note(ocr_items))
-
         else:
             st.warning("No OCR text detected")
 
@@ -1934,52 +1921,7 @@ if uploaded_file:
             use_column_width=True
         )
 
-        c1, c2, c3, c4 = st.columns(4)
-
-        with c1:
-            st.metric("Detected Holes", len(holes))
-
-        with c2:
-            st.metric("Radius Feature", geometry_features.get("radius_feature_present", False))
-
-        with c3:
-            st.metric("Chamfer Feature", geometry_features.get("chamfer_feature_present", False))
-
-        with c4:
-            st.metric("Slot Feature", geometry_features.get("slot_present", False))
-
-        c5, c6, c7 = st.columns(3)
-
-        with c5:
-            st.metric("Slot Count", geometry_features.get("slot_count", 0))
-
-        with c6:
-            st.metric("Shaft Region", geometry_features.get("shaft_region_found", False))
-
-        with c7:
-            st.metric("Circlip Groove", geometry_features.get("circlip_groove_present", False))
-
-        st.subheader("Detected Dimensions")
-
-        if dimensions:
-            df_dim = pd.DataFrame([
-                {
-                    "Corrected Text": d["raw_text"],
-                    "Original OCR": d.get("original_raw_text", ""),
-                    "Value": d["value"],
-                    "Diameter?": d["is_diameter"],
-                    "Radius?": d["is_radius"],
-                    "Chamfer?": d["is_chamfer"],
-                    "Confidence": d["confidence"]
-                }
-                for d in dimensions
-            ])
-
-            st.dataframe(df_dim)
-        else:
-            st.warning("No dimensions detected")
-
-        st.subheader("Raw Geometry Dictionary")
+        st.metric("Detected Holes", len(holes))
         st.json(geometry_features)
 
     with tab4:
@@ -2002,7 +1944,6 @@ if uploaded_file:
             st.dataframe(issue_df)
 
             st.subheader("Issue Numbers Marked on Drawing")
-
             st.image(
                 cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
                 use_column_width=True
@@ -2027,9 +1968,7 @@ if uploaded_file:
                     img,
                     issues
                 )
-
                 st.session_state.material_corrected = True
-
                 st.success("Finish corrected to CLEAR ANODIZE")
 
             preview = annotate_issues(
@@ -2083,25 +2022,14 @@ if uploaded_file:
 
         total_issues = len(issues)
 
-        critical_count = sum(
-            1 for i in issues
-            if i["severity"] == "Critical"
-        )
-
-        medium_count = sum(
-            1 for i in issues
-            if i["severity"] == "Medium"
-        )
-
-        low_count = sum(
-            1 for i in issues
-            if i["severity"] in ["High", "Low"]
-        )
+        high_count = sum(1 for i in issues if i["severity"] == "High")
+        medium_count = sum(1 for i in issues if i["severity"] == "Medium")
+        low_count = sum(1 for i in issues if i["severity"] == "Low")
 
         score = max(
             0,
             100 - (
-                critical_count * 20
+                high_count * 15
                 + medium_count * 10
                 + low_count * 5
             )
@@ -2113,52 +2041,77 @@ if uploaded_file:
 
 Total Issues Found: {total_issues}
 
-🔴 Critical: {critical_count}
+🔴 High Severity: {high_count}
 
-🟡 Medium: {medium_count}
+🟡 Medium Severity: {medium_count}
 
-🟢 Low: {low_count}
+🟢 Low Severity: {low_count}
 """
         )
 
         c1, c2, c3 = st.columns(3)
 
         with c1:
-            st.error(f"🔴 Critical : {critical_count}")
+            st.error(f"🔴 High Severity : {high_count}")
 
         with c2:
-            st.warning(f"🟡 Medium : {medium_count}")
+            st.warning(f"🟡 Medium Severity : {medium_count}")
 
         with c3:
-            st.success(f"🟢 Low : {low_count}")
+            st.success(f"🟢 Low Severity : {low_count}")
 
         if total_issues > 0:
-            fig, ax = plt.subplots(figsize=(5, 5))
+            labels = []
+            sizes = []
+            colors = []
 
-            labels = ["Critical", "Medium", "Low"]
+            if high_count > 0:
+                labels.append("High")
+                sizes.append(high_count)
+                colors.append("#d62728")
 
-            sizes = [
-                critical_count,
-                medium_count,
-                low_count
-            ]
+            if medium_count > 0:
+                labels.append("Medium")
+                sizes.append(medium_count)
+                colors.append("#ffbf00")
 
-            colors = [
-                "#d62728",
-                "#ffbf00",
-                "#2ca02c"
-            ]
+            if low_count > 0:
+                labels.append("Low")
+                sizes.append(low_count)
+                colors.append("#2ca02c")
+
+            fig, ax = plt.subplots(figsize=(6, 5))
 
             ax.pie(
                 sizes,
                 labels=labels,
                 autopct="%1.0f%%",
-                colors=colors
+                startangle=90,
+                colors=colors,
+                wedgeprops=dict(width=0.45),
+                textprops=dict(fontsize=11)
             )
 
-            ax.set_title("Issue Distribution")
+            ax.text(
+                0,
+                0,
+                f"{score}%",
+                ha="center",
+                va="center",
+                fontsize=24,
+                fontweight="bold"
+            )
+
+            ax.set_title(
+                "Issue Distribution",
+                fontsize=14,
+                pad=20
+            )
+
+            ax.axis("equal")
 
             st.pyplot(fig)
+
         else:
             st.success("No issues found. Drawing validation score is 100%.")
 
@@ -2201,6 +2154,5 @@ Total Issues Found: {total_issues}
             file_name="cad_corrected_marked_result.png",
             mime="image/png"
         )
-
 else:
-    st.info("Upload a CAD drawing image to begin.")
+    st.success("No issues found. Drawing validation score is 100%.")
